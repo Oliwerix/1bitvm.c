@@ -21,7 +21,7 @@ int ram[BITS];
 int main(int argc, char *argv[]) {
 	file_ptr = fopen(argv[1], "rb");
 	if(file_ptr == NULL) {
-		fprintf(stderr,"Supplied file is invalid");
+		fprintf(stderr,"Supplied file is invalid\n");
 		return(10);
 	}
 	instructions = (instruction*)malloc(sizeof(instruction) * 32768);
