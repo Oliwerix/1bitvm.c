@@ -78,8 +78,7 @@ int loop() {
 }
 int read_instruction(instruction * a) {
 	int e = fread(&r_instruction, 2, 1, file_ptr);
-	//r_instruction = (r_instruction >> 8) | (r_instruction << 8); //swap byte order TODO: make this platform independant
-	r_instruction = htons(r_instruction); //swap byte order		
+	r_instruction = htons(r_instruction); //swap byte order to be 		
 	if(!e) r_instruction = 0;
 	a->meta = r_instruction & 0x1;
 	a->opp = (r_instruction >> 1) & 0x1;
