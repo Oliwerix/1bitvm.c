@@ -3,6 +3,8 @@
 #define DEBUG 0
 // execution limit -1 to disable
 #define LIMIT -1
+// exit on EOF
+#define EXIT_ON_EOF 1
 
 
 // No of registers

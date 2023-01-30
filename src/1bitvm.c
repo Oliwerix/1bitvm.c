@@ -30,14 +30,14 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, "r_instruction    PC     m o adr0 adr1\n");
 #endif
 	read_instructions();
-	int v = loop();
-#if DEBUG > 0
+	int return_value = loop();
+#if DEBUG
 	fprintf(stderr, "%llu instructions elapsed\n", counter);
-	if(v == 0) fprintf(stderr, "Exited gracefully\n");
-	if(v == 1) fprintf(stderr, "Execution limit reached\n");
-	if(v == 2) fprintf(stderr, "EOF on stdin\n");
+	if(return_value == 0) fprintf(stderr, "Exited gracefully\n");
+	if(return_value == 1) fprintf(stderr, "Execution limit reached\n");
+	if(return_value == 2) fprintf(stderr, "EOF on stdin\n");
 #endif
-	return v;
+	return return_value;
 
 }
 int loop() {
@@ -126,10 +126,16 @@ int do_IO() {
 		if(InputBufferCounter == 0) {
 			fprintf(stdout, ">");
 			int InputBufferBuffer = getchar(); //we put getchar into int beacause of EOF
-			if(InputBufferBuffer == EOF) return 1;
-			InputBuffer = InputBufferBuffer;
+			if(InputBufferBuffer == EOF) {
+#if EXIT_ON_EOF
+				return 1;
+#endif
+				InputBuffer = 0xff;
+			} else {
+				InputBuffer = InputBufferBuffer;
+			}
 			InputBufferCounter = 8;
-			InputBuffer = reverse(InputBuffer);
+			InputBuffer = reverse(InputBuffer); // reverse bit order
 		}
 		ram[IN] = InputBuffer & 1;
 		InputBuffer = InputBuffer >> 1;
