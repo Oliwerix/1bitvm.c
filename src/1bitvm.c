@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "1bitvm.h"
+#include "config.h"
 
 
 uint16_t oldPC;
@@ -11,8 +12,8 @@ uint16_t r_instruction; // prebrana isntrukcija xd
 unsigned char OutputBuffer;
 unsigned char OutputBufferCounter;
 unsigned char InputBuffer;
-unsigned char LastCharacter = '\n';
 unsigned char InputBufferCounter;
+unsigned char InputBufferLast = '\n';
 unsigned char InputForce;
 FILE *file_ptr;
 instruction * instructions;
@@ -124,7 +125,12 @@ int do_IO() {
 	}
 	if(!ram[IN_A] && InputForce) {
 		if(InputBufferCounter == 0) {
-			fprintf(stdout, ">");
+#if STDIN_PROMPT
+			if(InputBufferLast == '\n') {
+				fprintf(STDIN_PROMPT_STREAM, ">");
+			}
+			
+#endif
 			int InputBufferBuffer = getchar(); //we put getchar into int beacause of EOF
 			if(InputBufferBuffer == EOF) {
 #if EXIT_ON_EOF
@@ -134,6 +140,7 @@ int do_IO() {
 			} else {
 				InputBuffer = InputBufferBuffer;
 			}
+			InputBufferLast = InputBuffer;
 			InputBufferCounter = 8;
 			InputBuffer = reverse(InputBuffer); // reverse bit order
 		}
