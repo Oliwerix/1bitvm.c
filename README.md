@@ -1,7 +1,31 @@
-# 1bitvm.c
-1bitvm implemetation in C
+# 1bitvm.c - 1bitvm implemetation in C
+This is an implemetation of the 1bit processor as described by [adimineman](https://github.com/adimineman).
+Being that it's written in C, it performes about 232x better, and because of the lower level and lower overhead it provides better compatability with software written for the 1bit architecture.
+
+
+
+## Installation
+### Dependacies
+This software only depens on the GNU C Library, GCC and GNU Make
+### Building
+    make
+
+## Usage 
+    ./1bitvm infile
+### Options
+Debugging is availiable through four debug levels settable in `src/1bitvm.h`
+
+An instruction execution limit is available in `src/1bitvm.h` (disabled by default)
+
+The emulator exits if stdin reaches an EOF, this behaviour can be disabled in `src/1bitvm.h`, then EOF will be ignored, the Input will always be `0xff` and the programm will continue.
+### Return values
+    0 - Exited by PC non increment - graceful
+    1 - Execution limit reached
+    2 - EOF on stdin
 ## Example files
 get example files [here](https://github.com/adimineman/1bitvm)
+### Compilation
+    ./asm.py *.asm
 
 ## License
     1bitvm.c - C Implementation of the 1bit architecture
