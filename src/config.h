@@ -5,7 +5,7 @@
 #define LIMIT -1
 
 // exit on EOF
-#define EXIT_ON_EOF 1
+#define EXIT_ON_EOF 0
 
 // show stdin prompt
 #define STDIN_PROMPT 1

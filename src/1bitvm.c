@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <arpa/inet.h>
 
 #include "1bitvm.h"
@@ -52,19 +51,18 @@ int loop() {
 			fprintf(stderr, "%016b 0x%04x %b %b 0x%02x 0x%02x\n",r_instruction, get_PC(), ins.meta, ins.opp, ins.adr0, ins.adr1);
 		#endif
 		oldPC = inc_PC() - 1; //checking for same PC, inc_PC/0 returns the incremented PC, so we decrement it
-		if(ins.opp) {
-			if(ins.meta)
-				xor(ins.adr0, ins.adr1);
-			else
-				nand(ins.adr0, ins.adr1);
-		} else {
-			if(ins.meta)
-				copy2reg(ins.adr0, ins.adr1);
-			else
-				copy16bits(ins.adr0, ins.adr1);
+		switch(ins.ins) {
+			case 0b00: copy16bits(ins.adr0, ins.adr1); break;
+			case 0b01: copy2reg(ins.adr0, ins.adr1); break;
+			case 0b10: nand(ins.adr0, ins.adr1); break;
+			case 0b11: xor(ins.adr0, ins.adr1); break;
 		}
 		if(ins.adr0 == IN_A || ins.adr1 == IN_A) InputForce = 1;
-		if(do_IO()) return 2; // EOF on stdin
+		if(do_IO()) {
+#if EXIT_ON_EOF
+			return 2; // EOF on stdin
+#endif
+		}
 		if(oldPC == get_PC())
 			return 0; // exit reached in programm
 #if LIMIT > 0	
@@ -80,8 +78,7 @@ int read_instruction(instruction * a) {
 	int e = fread(&r_instruction, 2, 1, file_ptr);
 	r_instruction = htons(r_instruction); //swap byte order to be 		
 	if(!e) r_instruction = 0;
-	a->meta = r_instruction & 0x1;
-	a->opp = (r_instruction >> 1) & 0x1;
+	a->ins = r_instruction & 0b11;
 	a->adr0 = (r_instruction >> 9) & 0x7f;
 	a->adr1 = (r_instruction >> 2) & 0x7f;
 	a->raw_instruction = r_instruction;
@@ -119,6 +116,7 @@ void xor(unsigned char src, unsigned char dst) {
 	ram[dst] = (!ram[src] != !ram[dst]);
 }
 int do_IO() {
+	int IO_status = 0;
 	if(ram[OUT_A]) {
 		OutputBuffer = OutputBuffer << 1 | (ram[OUT] & 1);
 		OutputBufferCounter++;
@@ -134,10 +132,7 @@ int do_IO() {
 #endif
 			int InputBufferBuffer = getchar(); //we put getchar into int beacause of EOF
 			if(InputBufferBuffer == EOF) {
-#if EXIT_ON_EOF
-				return 1;
-#endif
-				InputBuffer = 0xff;
+				IO_status = 1;
 			} else {
 				InputBuffer = InputBufferBuffer;
 			}
@@ -145,12 +140,13 @@ int do_IO() {
 			InputBufferCounter = 8;
 			InputBuffer = reverse(InputBuffer); // reverse bit order
 		}
-		ram[IN] = InputBuffer & 1;
-		InputBuffer = InputBuffer >> 1;
-		InputBufferCounter--;
-		ram[IN_A] = 1;
-		InputForce = 0;
-		
+		if(IO_status == 0) {
+			ram[IN] = InputBuffer & 1;
+			InputBuffer = InputBuffer >> 1;
+			InputBufferCounter--;
+			ram[IN_A] = 1;
+			InputForce = 0;
+		}
 	}
 	if(OutputBufferCounter > 7) {
 #if DEBUG > 0

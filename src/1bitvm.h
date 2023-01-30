@@ -1,7 +1,6 @@
 
 typedef struct instruction {
-	bool meta;
-	bool opp;
+	unsigned char ins;
 	unsigned char adr0;
 	unsigned char adr1;
 	uint16_t raw_instruction;
