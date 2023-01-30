@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, "r_instruction    PC     m o adr0 adr1\n");
 #endif
 	read_instructions();
+	fclose(file_ptr);
 	int return_value = loop();
 #if DEBUG
 	fprintf(stderr, "%llu instructions elapsed\n", counter);
@@ -74,8 +75,7 @@ int loop() {
 	}
 	return 1; // execution limit reached
 }
-int read_instruction(instruction * a, int PC) {
-	fseek(file_ptr,PC*2, SEEK_SET); 
+int read_instruction(instruction * a) {
 	int e = fread(&r_instruction, 2, 1, file_ptr);
 	r_instruction = (r_instruction >> 8) | (r_instruction << 8); //swap byte order TODO: make this platform independant
 	if(!e) r_instruction = 0;
@@ -89,7 +89,7 @@ int read_instruction(instruction * a, int PC) {
 void read_instructions() {
 	instruction a;
 	for(int i = 0; i < 32768; i++) {
-		if(!read_instruction(&a, i)) break;
+		if(!read_instruction(&a)) break;
 		instructions[i] = a;
 	}
 }

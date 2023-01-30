@@ -7,7 +7,7 @@ typedef struct instruction {
 	uint16_t raw_instruction;
 } instruction;
 
-int read_instruction(instruction * ins, int PC);
+int read_instruction(instruction * ins);
 void read_instructions();
 uint16_t get_PC();
 void copy16bits(unsigned char src, unsigned char dst);
