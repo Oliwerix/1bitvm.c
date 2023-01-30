@@ -37,7 +37,6 @@ int main(int argc, char *argv[]) {
 	if(v == 1) fprintf(stderr, "Execution limit reached\n");
 	if(v == 2) fprintf(stderr, "EOF on stdin\n");
 #endif
-	//print_ram();
 	return v;
 
 }
@@ -83,8 +82,6 @@ int read_instruction(instruction * a, int PC) {
 	a->opp = (r_instruction >> 1) & 0x1;
 	a->adr0 = (r_instruction >> 9) & 0x7f;
 	a->adr1 = (r_instruction >> 2) & 0x7f;
-	//a->adr0 = (r_instruction & 0xfe00) >> 9;
-	//a->adr1 = (r_instruction & 0x01fc) >> 2;
 	a->raw_instruction = r_instruction;
 	return e;
 }
