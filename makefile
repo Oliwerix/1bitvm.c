@@ -1,3 +1,3 @@
 CC="distcc"
 compile:
-	$(CC) -o 1bitvm src/1bitvm.c -O0 -march=native
+	$(CC) -o 1bitvm src/1bitvm.c -O3 -march=native -Wall -pedantic

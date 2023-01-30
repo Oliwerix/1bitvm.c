@@ -1,8 +1,13 @@
 
+// debug levels 0-4
 #define DEBUG 0
+// execution limit -1 to disable
 #define LIMIT -1
 
+
+// No of registers
 #define BITS 128
+// IO registers
 #define IN 0x10
 #define IN_A 0x11
 #define OUT 0x12

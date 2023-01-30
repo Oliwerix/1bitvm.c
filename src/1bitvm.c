@@ -11,12 +11,13 @@ uint16_t r_instruction; // prebrana isntrukcija xd
 unsigned char OutputBuffer;
 unsigned char OutputBufferCounter;
 unsigned char InputBuffer;
+unsigned char LastCharacter = '\n';
 unsigned char InputBufferCounter;
 unsigned char InputForce;
 FILE *file_ptr;
 instruction * instructions;
 int ram[BITS];
-
+unsigned long long int counter = 0; // type and a half
 
 int main(int argc, char *argv[]) {
 	file_ptr = fopen(argv[1], "rb");
@@ -25,11 +26,17 @@ int main(int argc, char *argv[]) {
 		return(10);
 	}
 	instructions = (instruction*)malloc(sizeof(instruction) * 32768);
-#if ERROR > 2
+#if DEBUG > 2
 	fprintf(stderr, "r_instruction    PC     m o adr0 adr1\n");
 #endif
 	read_instructions();
 	int v = loop();
+#if DEBUG > 0
+	fprintf(stderr, "%llu instructions elapsed\n", counter);
+	if(v == 0) fprintf(stderr, "Exited gracefully\n");
+	if(v == 1) fprintf(stderr, "Execution limit reached\n");
+	if(v == 2) fprintf(stderr, "EOF on stdin\n");
+#endif
 	//print_ram();
 	return v;
 
@@ -55,11 +62,14 @@ int loop() {
 				copy16bits(ins.adr0, ins.adr1);
 		}
 		if(ins.adr0 == IN_A || ins.adr1 == IN_A) InputForce = 1;
-		if(do_IO()) return 3; // EOF on stdin
+		if(do_IO()) return 2; // EOF on stdin
 		if(oldPC == get_PC())
 			return 0; // exit reached in programm
 #if LIMIT > 0	
 		limit--;
+#endif
+#if DEBUG > 0
+		counter++;
 #endif
 	}
 	return 1; // execution limit reached
@@ -71,21 +81,22 @@ int read_instruction(instruction * a, int PC) {
 	if(!e) r_instruction = 0;
 	a->meta = r_instruction & 0x1;
 	a->opp = (r_instruction >> 1) & 0x1;
-	//a->adr0 = (r_instruction >> 9) & 0x7f;
-	//a->adr1 = (r_instruction >> 2) & 0x7f;
-	a->adr0 = (r_instruction & 0xfe00) >> 9;
-	a->adr1 = (r_instruction & 0x01fc) >> 2;
+	a->adr0 = (r_instruction >> 9) & 0x7f;
+	a->adr1 = (r_instruction >> 2) & 0x7f;
+	//a->adr0 = (r_instruction & 0xfe00) >> 9;
+	//a->adr1 = (r_instruction & 0x01fc) >> 2;
 	a->raw_instruction = r_instruction;
 	return e;
 }
 void read_instructions() {
-	instruction * a;
+	instruction a;
 	for(int i = 0; i < 32768; i++) {
-		if(!read_instruction(a, i)) break;
-		instructions[i] = *a;
+		if(!read_instruction(&a, i)) break;
+		instructions[i] = a;
 	}
 }
 void copy16bits(unsigned char src, unsigned char dst) {
+	// TODO: test overflow
 	int buffer [16];
 	for(int i = 0; i < 16; i++) {
 		buffer[i] = ram[(i+src)%BITS];
@@ -97,9 +108,6 @@ void copy16bits(unsigned char src, unsigned char dst) {
 }
 void copy2reg(unsigned char src, unsigned char dst) {
 	uint16_t buffer = instructions[src].raw_instruction;
-	//fseek(file_ptr, src*2, SEEK_SET);
-	//fread(&buffer, 2, 1, file_ptr);
-	//buffer = (buffer >> 8) | (buffer << 8); //swap byte order TODO: make this platform independant
 	for(int i = 15; i >= 0; i--) {
 		ram[(dst+i)%BITS] = buffer & 1;
 		buffer = buffer >> 1;
@@ -120,12 +128,9 @@ int do_IO() {
 	if(!ram[IN_A] && InputForce) {
 		if(InputBufferCounter == 0) {
 			fprintf(stdout, ">");
-			//fflush(stdout);
-			InputBuffer = getchar();
-			if(InputBuffer == EOF) return 1;
-			
-			//fprintf(stdout,"%c", InputBuffer);
-			//fflush(stdin);
+			int InputBufferBuffer = getchar(); //we put getchar into int beacause of EOF
+			if(InputBufferBuffer == EOF) return 1;
+			InputBuffer = InputBufferBuffer;
 			InputBufferCounter = 8;
 			InputBuffer = reverse(InputBuffer);
 		}
