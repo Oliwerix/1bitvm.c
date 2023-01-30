@@ -13,11 +13,13 @@ This software only depens on the GNU C Library, GCC and GNU Make
 ## Usage 
     ./1bitvm infile
 ### Options
-Debugging is availiable through four debug levels settable in `src/1bitvm.h`
+All described options are settable in `config.h`
+ - `DEBUG` - Debugging is availiable through four debug levels
+ - `LIMIT` - Maximum number of executed instructions, -1 to disable
+ - `EXIT_ON_EOF` - If set, the vm exits imediately after EOF is input, if not set, the vm is allowed to continue - IN will always be 1
+ - `STDIN_PROMPT` - if set, the vm will prompt the user with the character `>`, if not set, the character will not be shown
+ - `STDIN_PROMPT_STREAM` - sets the stream to which the prompt character may be printed
 
-An instruction execution limit is available in `src/1bitvm.h` (disabled by default)
-
-The emulator exits if stdin reaches an EOF, this behaviour can be disabled in `src/1bitvm.h`, then EOF will be ignored, the Input will always be `0xff` and the programm will continue.
 ### Return values
     0 - Exited by PC non increment - graceful
     1 - Execution limit reached
