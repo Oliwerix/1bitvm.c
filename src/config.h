@@ -5,7 +5,9 @@
 #define LIMIT -1
 
 // exit on EOF
-#define EXIT_ON_EOF 0
+#define EXIT_ON_EOF 1
+// Maximum number of instructions after EOF was reached
+#define EXIT_ON_EOF_LIMIT 10000
 
 // show stdin prompt
 #define STDIN_PROMPT 1

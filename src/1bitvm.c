@@ -18,7 +18,9 @@ unsigned char InputForce;
 FILE *file_ptr;
 instruction * instructions;
 int ram[BITS];
+int EOF_reached = 0; 
 unsigned long long int counter = 0; // type and a half
+unsigned long long int EOF_reached_counter; 
 
 int main(int argc, char *argv[]) {
 	file_ptr = fopen(argv[1], "rb");
@@ -26,15 +28,15 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"Supplied file is invalid\n");
 		return(10);
 	}
-	instructions = (instruction*)malloc(sizeof(instruction) * 32768);
+	instructions = (instruction*)calloc(32768,sizeof(instruction));
 #if DEBUG > 2
-	fprintf(stderr, "r_instruction    PC     m o adr0 adr1\n");
+	fprintf(stderr, "PC  \traw_ins\tmo adr0 adr1\n");
 #endif
 	read_instructions();
 	fclose(file_ptr);
 	int return_value = loop();
 #if DEBUG
-	fprintf(stderr, "%llu instructions elapsed\n", counter);
+	fprintf(stderr, "%llu instructions elapsed.\n", counter);
 	if(return_value == 0) fprintf(stderr, "Exited gracefully\n");
 	if(return_value == 1) fprintf(stderr, "Execution limit reached\n");
 	if(return_value == 2) fprintf(stderr, "EOF on stdin\n");
@@ -48,7 +50,7 @@ int loop() {
 	while (limit > 0 || limit == -1) {
 		ins = instructions[get_PC()];
 		#if DEBUG > 2
-			fprintf(stderr, "%016b 0x%04x %b %b 0x%02x 0x%02x\n",r_instruction, get_PC(), ins.meta, ins.opp, ins.adr0, ins.adr1);
+			fprintf(stderr, "0x%04x\t0x%04x\t%02b 0x%02x 0x%02x\n", get_PC(),ins.raw_instruction, ins.ins, ins.adr0, ins.adr1);
 		#endif
 		oldPC = inc_PC() - 1; //checking for same PC, inc_PC/0 returns the incremented PC, so we decrement it
 		switch(ins.ins) {
@@ -56,11 +58,14 @@ int loop() {
 			case 0b01: copy2reg(ins.adr0, ins.adr1); break;
 			case 0b10: nand(ins.adr0, ins.adr1); break;
 			case 0b11: xor(ins.adr0, ins.adr1); break;
+			//default: return 4;
 		}
 		if(ins.adr0 == IN_A || ins.adr1 == IN_A) InputForce = 1;
 		if(do_IO()) {
 #if EXIT_ON_EOF
-			return 2; // EOF on stdin
+			if(counter - EOF_reached_counter > EXIT_ON_EOF_LIMIT) { // TODO: is this overflow safe?
+				return 2; // EOF on stdin
+			}
 #endif
 		}
 		if(oldPC == get_PC())
@@ -68,27 +73,23 @@ int loop() {
 #if LIMIT > 0	
 		limit--;
 #endif
-#if DEBUG > 0
 		counter++;
-#endif
 	}
 	return 1; // execution limit reached
 }
 int read_instruction(instruction * a) {
-	int e = fread(&r_instruction, 2, 1, file_ptr);
+	int e = fread(&r_instruction, 1, 2, file_ptr);
 	r_instruction = htons(r_instruction); //swap byte order to be 		
-	if(!e) r_instruction = 0;
-	a->ins = r_instruction & 0b11;
-	a->adr0 = (r_instruction >> 9) & 0x7f;
-	a->adr1 = (r_instruction >> 2) & 0x7f;
+	if(e == 0) r_instruction = 0;
+	a->ins = (unsigned char)(r_instruction & 0x0003);
+	a->adr0 = (r_instruction >> 9) & 0x007f;
+	a->adr1 = (r_instruction >> 2) & 0x007f;
 	a->raw_instruction = r_instruction;
 	return e;
 }
 void read_instructions() {
-	instruction a;
 	for(int i = 0; i < 32768; i++) {
-		if(!read_instruction(&a)) break;
-		instructions[i] = a;
+		read_instruction(&instructions[i]);
 	}
 }
 void copy16bits(unsigned char src, unsigned char dst) {
@@ -116,7 +117,6 @@ void xor(unsigned char src, unsigned char dst) {
 	ram[dst] = (!ram[src] != !ram[dst]);
 }
 int do_IO() {
-	int IO_status = 0;
 	if(ram[OUT_A]) {
 		OutputBuffer = OutputBuffer << 1 | (ram[OUT] & 1);
 		OutputBufferCounter++;
@@ -131,16 +131,16 @@ int do_IO() {
 			
 #endif
 			int InputBufferBuffer = getchar(); //we put getchar into int beacause of EOF
-			if(InputBufferBuffer == EOF) {
-				IO_status = 1;
-			} else {
-				InputBuffer = InputBufferBuffer;
+			if(InputBufferBuffer == EOF && EOF_reached == 0) {
+				EOF_reached = 1;
+				EOF_reached_counter = counter;
 			}
+			InputBuffer = InputBufferBuffer;
 			InputBufferLast = InputBuffer;
 			InputBufferCounter = 8;
 			InputBuffer = reverse(InputBuffer); // reverse bit order
 		}
-		if(IO_status == 0) {
+		if(!EOF_reached) {
 			ram[IN] = InputBuffer & 1;
 			InputBuffer = InputBuffer >> 1;
 			InputBufferCounter--;
@@ -158,7 +158,7 @@ int do_IO() {
 #endif
 		OutputBufferCounter = 0;
 	}
-	return 0;
+	return EOF_reached;
 }
 uint16_t get_PC() {
 	uint16_t PC = 0;
@@ -185,7 +185,6 @@ void print_ram() {
 		if(i%8 == 7) fprintf(stderr, "\n"); // 8 bitov skupi na vrstico
 	}	
 }
-unsigned char reverse(unsigned char b)
-{
+unsigned char reverse(unsigned char b){
     return (b * 0x0202020202ULL & 0x010884422010ULL) % 0x3ff;
 }

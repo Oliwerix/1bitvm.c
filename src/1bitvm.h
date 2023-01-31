@@ -1,6 +1,6 @@
 
 typedef struct instruction {
-	unsigned char ins;
+	uint16_t ins;
 	unsigned char adr0;
 	unsigned char adr1;
 	uint16_t raw_instruction;
