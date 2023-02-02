@@ -7,7 +7,6 @@
 #include "config.h"
 
 
-uint16_t oldPC;
 uint16_t r_instruction; // prebrana isntrukcija xd  
 unsigned char OutputBuffer;
 unsigned char OutputBufferCounter;
@@ -28,7 +27,7 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"Supplied file is invalid\n");
 		return(10);
 	}
-	instructions = (instruction*)calloc(32768,sizeof(instruction));
+	instructions = (instruction*)calloc(0xffff,sizeof(instruction));
 #if DEBUG > 2
 	fprintf(stderr, "PC  \traw_ins\tmo adr0 adr1\n");
 #endif
@@ -47,18 +46,24 @@ int main(int argc, char *argv[]) {
 int loop() {
 	long long limit = LIMIT;
 	instruction ins;
+	uint16_t oldPC = 0xffff;
+	uint16_t PC = 0;
 	while (limit > 0 || limit == -1) {
-		ins = instructions[get_PC()];
+		PC = get_PC();
+		if(oldPC == PC)
+			return 0; // exit reached in programm
+		oldPC = PC; 
+		ins = instructions[PC];
+		PC++;
 		#if DEBUG > 2
 			fprintf(stderr, "0x%04x\t0x%04x\t%02b 0x%02x 0x%02x\n", get_PC(),ins.raw_instruction, ins.ins, ins.adr0, ins.adr1);
 		#endif
-		oldPC = inc_PC() - 1; //checking for same PC, inc_PC/0 returns the incremented PC, so we decrement it
+		set_PC(PC); //checking for same PC, inc_PC/0 returns the incremented PC, so we decrement it
 		switch(ins.ins) {
 			case 0b00: copy16bits(ins.adr0, ins.adr1); break;
 			case 0b01: copy2reg(ins.adr0, ins.adr1); break;
 			case 0b10: nand(ins.adr0, ins.adr1); break;
 			case 0b11: xor(ins.adr0, ins.adr1); break;
-			//default: return 4;
 		}
 		if(ins.adr0 == IN_A || ins.adr1 == IN_A) InputForce = 1;
 		if(do_IO()) {
@@ -68,8 +73,6 @@ int loop() {
 			}
 #endif
 		}
-		if(oldPC == get_PC())
-			return 0; // exit reached in programm
 #if LIMIT > 0	
 		limit--;
 #endif
@@ -88,7 +91,7 @@ int read_instruction(instruction * a) {
 	return e;
 }
 void read_instructions() {
-	for(int i = 0; i < 32768; i++) {
+	for(int i = 0; i < 0xffff; i++) {
 		read_instruction(&instructions[i]);
 	}
 }
@@ -107,7 +110,7 @@ void copy2reg(unsigned char src, unsigned char dst) {
 	uint16_t buffer = instructions[src].raw_instruction;
 	for(int i = 15; i >= 0; i--) {
 		ram[(dst+i)%BITS] = buffer & 1;
-		buffer = buffer >> 1;
+		buffer >>= 1;
 	}
 }
 void nand(unsigned char src, unsigned char dst) {
@@ -168,16 +171,16 @@ uint16_t get_PC() {
 	}
 	return PC;
 }
-void set_PC(uint16_t PC) {
+uint16_t set_PC(uint16_t PC) {
 	for(int i = 15; i >= 0; i--) {
 		ram[i] = PC & 1;
 		PC >>= 1;
 	}
+	return PC;
 }
 uint16_t inc_PC() {
 	// returns the incremented PC
-	set_PC(get_PC()+1);
-	return get_PC();
+	return set_PC(get_PC()+1);
 }
 void print_ram() {
 	for(int i = 0; i < BITS; i++) {
