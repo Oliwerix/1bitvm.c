@@ -16,7 +16,7 @@ unsigned char InputBufferLast = '\n';
 unsigned char InputForce;
 FILE *file_ptr;
 instruction * instructions;
-int ram[BITS];
+int_fast32_t ram[BITS];
 int EOF_reached = 0; 
 unsigned long long int counter = 0; // type and a half
 unsigned long long int EOF_reached_counter; 
@@ -44,11 +44,19 @@ int main(int argc, char *argv[]) {
 
 }
 int loop() {
+#if LIMIT > 0
 	long long limit = LIMIT;
+#endif
 	instruction ins;
 	uint16_t oldPC = 0xffff;
 	uint16_t PC = 0;
-	while (limit > 0 || limit == -1) {
+	while (
+#if LIMIT > 0
+			limit > 0
+#else
+			1
+#endif
+			) {
 		PC = get_PC();
 		if(oldPC == PC)
 			return 0; // exit reached in programm
@@ -181,12 +189,6 @@ uint16_t set_PC(uint16_t PC) {
 uint16_t inc_PC() {
 	// returns the incremented PC
 	return set_PC(get_PC()+1);
-}
-void print_ram() {
-	for(int i = 0; i < BITS; i++) {
-		fprintf(stderr, "%b", ram[i]);
-		if(i%8 == 7) fprintf(stderr, "\n"); // 8 bitov skupi na vrstico
-	}	
 }
 unsigned char reverse(unsigned char b){
     return (b * 0x0202020202ULL & 0x010884422010ULL) % 0x3ff;
