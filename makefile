@@ -1,5 +1,5 @@
 MYCFLAGS=-O3 -march=native -Wall -Wformat
-
+CC=clang
 
 default: 1bitvm
 
