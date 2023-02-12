@@ -72,7 +72,7 @@ uint_fast16_t set_PC(uint16_t PC) {
 uint_fast16_t inc_PC(void) {
 	return set_PC(get_PC()+1);
 }
-uint_fast8_t reverse(uint_fast8_t b){
+uint8_t reverse(uint8_t b){
     return (b * 0x0202020202ULL & 0x010884422010ULL) % 0x3ff;
 }
 
