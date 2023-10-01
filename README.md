@@ -14,6 +14,7 @@ This software only depens on the GNU C Library, GCC and GNU Make
     ./1bitvm infile
 ### Options
 All described options are settable in `config.h`
+ - `USE_SIMD` - Improves performance by up to 2x on supported platforms (modern x86 CPUs)
  - `DEBUG` - Debugging is availiable through four debug levels
  - `LIMIT` - Maximum number of executed instructions, -1 to disable
  - `EXIT_ON_EOF` - If set, the vm exits imediately after EOF is input, if not set, the vm is allowed to continue - IN will always be 1

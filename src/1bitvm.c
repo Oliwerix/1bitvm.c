@@ -6,6 +6,9 @@
 #include "1bitvm.h"
 #include "config.h"
 
+#ifdef USE_SIMD
+#include <immintrin.h>
+#endif
 
 uint16_t r_instruction; // prebrana isntrukcija xd  
 unsigned char OutputBuffer;
@@ -16,7 +19,11 @@ unsigned char InputBufferLast = '\n';
 unsigned char InputForce;
 FILE *file_ptr;
 instruction * instructions;
+#ifdef USE_SIMD
+uint8_t ram[BITS];
+#else
 int_fast32_t ram[BITS];
+#endif
 int EOF_reached = 0; 
 unsigned long long int counter = 0; // type and a half
 unsigned long long int EOF_reached_counter; 
@@ -105,6 +112,10 @@ void read_instructions() {
 }
 void copy16bits(unsigned char src, unsigned char dst) {
 	// TODO: test overflow
+#ifdef USE_SIMD
+	//! THIS IS MEGA BAD IF OVERFLOWS ARE AN ISSUE, MAYBE ADD AN BOUNDS CHECK
+	_mm_storeu_si128((__m128i *)(ram + dst), _mm_loadu_si128((__m128i *)(ram + src)));
+#else
 	int buffer [16];
 	for(int i = 0; i < 16; i++) {
 		buffer[i] = ram[(i+src)%BITS];
@@ -112,14 +123,26 @@ void copy16bits(unsigned char src, unsigned char dst) {
 	for(int i = 0; i < 16; i++) {
 		ram[(i+dst)%BITS] = buffer[i];
 	}
-	
+#endif
 }
 void copy2reg(unsigned char src, unsigned char dst) {
 	uint16_t buffer = instructions[src].raw_instruction;
+#ifdef USE_SIMD
+	const __m128i extract_bits = _mm_set_epi8(0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80,
+											  0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80);
+
+	uint8_t b = buffer, t = buffer >> 8; // split buffer
+
+	__m128i buffer_vec = _mm_set_epi8(b, b, b, b, b, b, b, b, t, t, t, t, t, t, t, t);    // load halves of buffer
+	buffer_vec = _mm_min_epu8(_mm_and_si128(buffer_vec, extract_bits), _mm_set1_epi8(1)); // AND with bit weights and clamp to 1
+	//! THIS IS MEGA BAD IF OVERFLOWS ARE AN ISSUE, MAYBE ADD AN BOUNDS CHECK
+	_mm_storeu_si128((__m128i *)(ram+dst), buffer_vec);									  // write to ram
+#else
 	for(int i = 15; i >= 0; i--) {
 		ram[(dst+i)%BITS] = buffer & 1;
 		buffer >>= 1;
 	}
+#endif
 }
 void nand(unsigned char src, unsigned char dst) {
 	ram[dst] = !(ram[src] && ram[dst]);
@@ -171,19 +194,41 @@ int do_IO() {
 	}
 	return EOF_reached;
 }
-uint16_t get_PC() {
+uint16_t get_PC()
+{
 	uint16_t PC = 0;
+#ifdef USE_SIMD
+	// This actually reverses bytes in a vector, trust me
+	const __m128i shuffle_reverse = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+	__m128i pc_vec = _mm_loadu_si128((__m128i *)ram);	// load PC
+	pc_vec = _mm_slli_epi16(pc_vec, 7);					// turn LSB into MSB (since movemask reads MSB)
+	pc_vec = _mm_shuffle_epi8(pc_vec, shuffle_reverse); // flip order of bytes (later bits)
+	PC = _mm_movemask_epi8(pc_vec);						// extract u16
+#else
 	for(int i = 0; i < 16; i++) {
 		PC <<= 1;
 		PC = PC | (ram[i] & 1);
 	}
+#endif
 	return PC;
 }
 uint16_t set_PC(uint16_t PC) {
+#ifdef USE_SIMD
+	const __m128i extract_bits = _mm_set_epi8(0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80,
+											  0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80);
+
+	uint8_t b = PC, t = PC >> 8; // split PC
+
+	__m128i pc_vec = _mm_set_epi8(b, b, b, b, b, b, b, b, t, t, t, t, t, t, t, t); // load halves of PC
+	pc_vec = _mm_min_epu8(_mm_and_si128(pc_vec, extract_bits), _mm_set1_epi8(1));  // AND with bit weights and clamp to 1
+	_mm_storeu_si128((__m128i *)ram, pc_vec);									   // write out new PC
+#else
 	for(int i = 15; i >= 0; i--) {
 		ram[i] = PC & 1;
 		PC >>= 1;
 	}
+#endif
 	return PC;
 }
 uint16_t inc_PC() {

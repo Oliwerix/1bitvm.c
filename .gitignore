@@ -1,3 +1,10 @@
 *.asm
 *.out
 ./1bitvm
+
+# Ignore valgrind output
+*grind.out
+*grind.out.*
+
+# No comment
+.vscode/*
