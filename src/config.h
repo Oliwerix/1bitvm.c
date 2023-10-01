@@ -1,3 +1,6 @@
+// comment out to disable SIMD (90% sure its AVX)
+#define USE_SIMD
+
 // debug levels 0-4
 #define DEBUG 0 
 
